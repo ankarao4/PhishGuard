@@ -2,6 +2,9 @@
 
 A modern, high-performance web application to detect phishing attempts in URLs and QR codes using Machine Learning.
 
+
+**Repository**: [https://github.com/ankarao4/PhishGuard](https://github.com/ankarao4/PhishGuard)
+
 ## Features
 
 - **URL Analysis**: Uses a Machine Learning model (Random Forest logic) to detect suspicious patterns in URLs.
