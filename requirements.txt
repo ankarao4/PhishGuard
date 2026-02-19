@@ -6,3 +6,4 @@ qrcode[pil]
 pyzbar
 Pillow
 opencv-python-headless
+joblib

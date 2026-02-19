@@ -26,14 +26,14 @@ A modern, machine learning-powered web application to detect phishing URLs and m
 
 3.  **Run the Application**:
     ```bash
-    python app.py
+    python3 app.py
     ```
 
 4.  **Access the Website**:
-    - Open your browser and go to: [http://localhost:5001](http://localhost:5001)
+    - Open your browser and go to: [http://localhost:3000](http://localhost:3000)
     - To access from your **mobile phone** on the same Wi-Fi:
         - Find your computer's local IP address (e.g., `192.168.1.5`).
-        - On your phone, visit: `http://192.168.1.5:5001` (Replace with your actual IP).
+        - On your phone, visit: `http://192.168.1.5:3000` (Replace with your actual IP).
 
 ## Deployment
 

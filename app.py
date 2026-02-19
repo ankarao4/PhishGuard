@@ -1,7 +1,9 @@
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify, render_template
 import joblib
 import numpy as np
 import os
+import re
 from utils import extract_features
 # Attempt to import pyzbar, handle potential import error gracefully
 try:
@@ -58,6 +60,30 @@ def predict():
         return jsonify({'error': 'No URL provided'}), 400
     
     url = data['url']
+    
+    # whitelist check
+    whitelist = [
+        'wa.me', 'www.wa.me', 'whatsapp.com', 'www.whatsapp.com', 
+        'web.whatsapp.com', 'instagram.com', 'www.instagram.com', 
+        'facebook.com', 'www.facebook.com', 'linkedin.com', 'www.linkedin.com',
+        'twitter.com', 'www.twitter.com', 't.me', 'telegram.org',
+        'google.com', 'www.google.com', 'youtube.com', 'www.youtube.com'
+    ]
+    
+    domain = None
+    try:
+        parsed_url = urlparse(url)
+        domain = parsed_url.netloc
+    except:
+        pass
+        
+    if domain and any(safe_domain in domain for safe_domain in whitelist):
+         return jsonify({
+            'result': "Legitimate",
+            'confidence': "100.0% (Whitelisted)",
+            'url': url
+        })
+
     try:
         features = np.array([extract_features(url)])
         prediction = model.predict(features)[0]
@@ -115,17 +141,44 @@ def scan_qr():
         if not url:
             return jsonify({'error': 'No QR code found in image'}), 400
             
-        # Predict URL if model is available
-        result = "Unknown (Model not loaded)"
-        confidence = "N/A"
+        # Check if the content is actually a URL
+        is_url_pattern = re.match(r'^(http|https|ftp)://', url, re.IGNORECASE) or \
+                         re.match(r'^(www\.)', url, re.IGNORECASE)
         
-        if model:
-            features = np.array([extract_features(url)])
-            prediction = model.predict(features)[0]
-            result = "Phishing" if prediction == 1 else "Legitimate"
-            proba = model.predict_proba(features)[0]
-            confidence = f"{proba[prediction] * 100:.1f}%"
+        result = "Legitimate" # Default to Legitimate for non-URLs like WiFi/Contact cards
+        confidence = "Safe (Non-URL)"
+        
+        if is_url_pattern:
+             # whitelist check
+            whitelist = [
+                'wa.me', 'www.wa.me', 'whatsapp.com', 'www.whatsapp.com', 
+                'web.whatsapp.com', 'instagram.com', 'www.instagram.com', 
+                'facebook.com', 'www.facebook.com', 'linkedin.com', 'www.linkedin.com',
+                'twitter.com', 'www.twitter.com', 't.me', 'telegram.org',
+                'google.com', 'www.google.com', 'youtube.com', 'www.youtube.com'
+            ]
             
+            domain = None
+            try:
+                parsed_url = urlparse(url)
+                domain = parsed_url.netloc
+            except:
+                pass
+                
+            if domain and any(safe_domain in domain for safe_domain in whitelist):
+                result = "Legitimate"
+                confidence = "100.0% (Whitelisted)"
+            elif model:
+                features = np.array([extract_features(url)])
+                prediction = model.predict(features)[0]
+                result = "Phishing" if prediction == 1 else "Legitimate"
+                proba = model.predict_proba(features)[0]
+                confidence = f"{proba[prediction] * 100:.1f}%"
+        else:
+             # It's raw text, WiFi config, or app data (like WhatsApp Web)
+             result = "Legitimate"
+             confidence = "100% (Not a URL)"
+
         return jsonify({
             'url': url,
             'result': result,
@@ -143,8 +196,8 @@ if __name__ == '__main__':
         s.connect(("8.8.8.8", 80))
         local_ip = s.getsockname()[0]
         s.close()
-        print(f"\n * Running on http://{local_ip}:5001 (Press CTRL+C to quit)\n")
+        print(f"\n * Running on http://{local_ip}:3000 (Press CTRL+C to quit)\n")
     except Exception:
-        print("\n * Could not determine local IP. Running on http://127.0.0.1:5001\n")
+        print("\n * Could not determine local IP. Running on http://127.0.0.1:3000\n")
 
-    app.run(host='0.0.0.0', debug=True, port=5001)
+    app.run(host='0.0.0.0', debug=True, port=3000)

@@ -13,7 +13,12 @@ def generate_synthetic_data(num_samples=2000):
     labels = []
     
     # Legitimate URLs
-    legitimate_domains = ['google.com', 'youtube.com', 'facebook.com', 'amazon.com', 'wikipedia.org', 'yahoo.com', 'reddit.com', 'netflix.com', 'stackoverflow.com', 'github.com']
+    legitimate_domains = [
+        'google.com', 'youtube.com', 'facebook.com', 'amazon.com', 'wikipedia.org', 
+        'yahoo.com', 'reddit.com', 'netflix.com', 'stackoverflow.com', 'github.com',
+        'whatsapp.com', 'web.whatsapp.com', 'wa.me', 'instagram.com', 'linkedin.com', 
+        'twitter.com', 'x.com', 't.me', 'telegram.org', 'microsoft.com', 'apple.com'
+    ]
     paths = ['', '/login', '/home', '/dashboard', '/user/profile', '/search', '/articles/2023', '/products/item123']
     
     for _ in range(num_samples // 2):
