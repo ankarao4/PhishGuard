@@ -10,12 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
         tab.addEventListener('click', () => {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
-            
+
             // Hide all sections, show target
             Object.values(sections).forEach(s => s.style.display = 'none');
             const targetId = tab.id.replace('-tab', '-section');
             document.getElementById(targetId).style.display = 'block';
-            
+
             // Clear results
             hideResult();
         });
@@ -27,13 +27,58 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const urlInput = document.getElementById('url-input').value;
         if (!urlInput) return;
+        analyzeUrl(urlInput);
+    });
 
+    // QR Code Scanning (Camera)
+    const startScanBtn = document.getElementById('start-scan-btn');
+    const readerDiv = document.getElementById('reader');
+    let html5QrCode;
+
+    startScanBtn.addEventListener('click', () => {
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("reader");
+        }
+
+        readerDiv.style.display = 'block';
+        startScanBtn.style.display = 'none';
+
+        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+        html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+            .catch(err => {
+                console.error(err);
+                displayError("Error starting camera: " + err);
+                readerDiv.style.display = 'none';
+                startScanBtn.style.display = 'block';
+            });
+    });
+
+    async function onScanSuccess(decodedText, decodedResult) {
+        // Stop scanning after success
+        if (html5QrCode) {
+            await html5QrCode.stop();
+            readerDiv.style.display = 'none';
+            startScanBtn.style.display = 'block';
+        }
+
+        // Analyze the URL found in QR
+        analyzeUrl(decodedText);
+    }
+
+    function onScanFailure(error) {
+        // handle scan failure, usually better to ignore and keep scanning.
+        // console.warn(`Code scan error = ${error}`);
+    }
+
+    // Helper to analyze URL (reused for both manual entry and QR scan)
+    async function analyzeUrl(url) {
         showLoader();
         try {
             const response = await fetch('/api/predict', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: urlInput })
+                body: JSON.stringify({ url: url })
             });
             const data = await response.json();
             displayResult(data);
@@ -42,9 +87,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             hideLoader();
         }
-    });
+    }
 
-    // QR Code Upload
+    // QR Code Upload (File)
     const qrInput = document.getElementById('qr-input');
     const dropZone = document.getElementById('drop-zone');
 
@@ -75,7 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
         handleFiles(files);
     }
 
-    qrInput.addEventListener('change', function() {
+    qrInput.addEventListener('change', function () {
         handleFiles(this.files);
     });
 
@@ -127,10 +172,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultContainer.style.display = 'block';
         resultContainer.className = data.result === 'Legitimate' ? 'safe' : 'danger';
-        
+
         const icon = data.result === 'Legitimate' ? '✔' : '⚠';
         resultTitle.textContent = `${icon} ${data.result.toUpperCase()}`;
-        
+
         let html = `<p>Analyzed URL: <strong>${escapeHtml(data.url)}</strong></p>`;
         if (data.confidence) {
             html += `<p>Confidence Score: ${data.confidence}</p>`;
@@ -148,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function hideResult() {
         resultContainer.style.display = 'none';
     }
-    
+
     function escapeHtml(text) {
         const div = document.createElement('div');
         div.textContent = text;

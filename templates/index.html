@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
     <nav>
@@ -32,19 +34,23 @@
         <div id="url-section">
             <form id="url-form">
                 <div class="input-group">
-                    <input type="text" id="url-input" placeholder="Enter URL to analyze (e.g., http://example.com)" required>
+                    <input type="text" id="url-input" placeholder="Enter URL to analyze (e.g., http://example.com)"
+                        required>
                 </div>
                 <button type="submit" class="btn">Analyze URL</button>
             </form>
         </div>
 
         <div id="qr-section" style="display: none;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <button id="start-scan-btn" class="btn" style="margin-bottom: 15px;">Start QR Scanner</button>
+                <div id="reader" style="width: 100%; max-width: 500px; margin: 0 auto; display: none;"></div>
+            </div>
+
             <div class="drop-zone" id="drop-zone">
-                <p>Drag & Drop QR Code Image Here</p>
-                <p>or click to upload</p>
+                <p>...or Drag & Drop QR Code Image </p>
                 <input type="file" id="qr-input" accept="image/*" style="display: none;">
             </div>
-            <!-- <img id="qr-preview" style="max-width: 100%; margin-top: 10px; display: none;"> -->
         </div>
 
         <div class="loader" id="loader"></div>
@@ -59,6 +65,8 @@
         <p>&copy; 2026 SecureScan AI. Powered by Python & Machine Learning.</p>
     </footer>
 
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
+
 </html>

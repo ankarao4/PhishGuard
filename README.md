@@ -1,46 +1,52 @@
-# PhishGuard - Phishing URL & QR Code Detector
+# Phishing URL & QR Code Detector (PhishGuard)
 
-A modern, high-performance web application to detect phishing attempts in URLs and QR codes using Machine Learning.
-
-
-**Repository**: [https://github.com/ankarao4/PhishGuard](https://github.com/ankarao4/PhishGuard)
-**Live Demo**: [INSERT_YOUR_RENDER_LINK_HERE](https://render.com)
-
+A modern, machine learning-powered web application to detect phishing URLs and malicious QR codes.
 
 ## Features
+- **URL Scanner**: Enter a URL to check if it's phishing or legitimate.
+- **QR Code Decoder**: 
+    - **Use Camera**: Scan QR codes directly using your device's camera.
+    - **Upload Image**: Drag & drop or upload an image containing a QR code.
+- **Mobile Responsive**: Works on desktops, laptops, and mobile phones.
+- **Real-time Analysis**: Provides instant feedback with a confidence score.
 
-- **URL Analysis**: Uses a Machine Learning model (Random Forest logic) to detect suspicious patterns in URLs.
-- **QR Code Scanning**: Upload QR code images to extract and analyze the embedded URL.
-- **Modern Design**: Sleek Green & Black "Hacker" theme with glassmorphism effects.
-- **Responsive**: Fully mobile-friendly layout.
-- **Privacy Focused**: No personal data is stored.
+## How to Run Locally
 
-## Tech Stack
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/ankarao4/PhishGuard.git
+    cd PhishGuard
+    ```
 
-- **Backend**: Python 3, Flask
-- **Machine Learning**: Scikit-Learn, Pandas, NumPy
-- **Image Processing**: OpenCV (headless)
-- **Frontend**: HTML5, Vanilla CSS3, Vanilla JavaScript
-
-## Setup & Run
-
-1.  **Install Dependencies**:
+2.  **Install Dependencies**:
+    Make sure you have Python installed. Then run:
     ```bash
     pip install -r requirements.txt
     ```
 
-2.  **Run the Application**:
+3.  **Run the Application**:
     ```bash
-    python3 app.py
+    python app.py
     ```
 
-3.  **Access**:
-    Open your browser and navigate to `http://localhost:3000`.
+4.  **Access the Website**:
+    - Open your browser and go to: [http://localhost:5001](http://localhost:5001)
+    - To access from your **mobile phone** on the same Wi-Fi:
+        - Find your computer's local IP address (e.g., `192.168.1.5`).
+        - On your phone, visit: `http://192.168.1.5:5001` (Replace with your actual IP).
 
-## Directory Structure
+## Deployment
 
-- `app.py`: Main Flask application.
-- `model.py`: User-simulation ML Model logic.
-- `templates/index.html`: Main One-Page frontend.
-- `static/css/style.css`: Styling.
-- `static/js/script.js`: Interactive frontend logic.
+To deploy this application to the web so anyone can access it, you can use services like **Render**, **Heroku**, or **PythonAnywhere**.
+
+### Example: Deploying to Render
+1. Create a [Render](https://render.com) account.
+2. Click "New +" -> "Web Service".
+3. Connect your GitHub repository (`ankarao4/PhishGuard`).
+4. Set the following:
+   - **Runtime**: Python 3
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `gunicorn app:app` (You may need to add `gunicorn` to `requirements.txt`)
+5. Click **Create Web Service**. Render will generate a public link for your website.
+
+**Note**: Since this app uses a camera, accessing it via a public link (not localhost) usually requires **HTTPS** for browser permissions. Most cloud providers (like Render) provide HTTPS automatically.
