@@ -136,4 +136,15 @@ def scan_qr():
         return jsonify({'error': f"Error processing QR code: {str(e)}"}), 500
 
 if __name__ == '__main__':
+    import socket
+    try:
+        # Get local IP address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        print(f"\n * Running on http://{local_ip}:5001 (Press CTRL+C to quit)\n")
+    except Exception:
+        print("\n * Could not determine local IP. Running on http://127.0.0.1:5001\n")
+
     app.run(host='0.0.0.0', debug=True, port=5001)
