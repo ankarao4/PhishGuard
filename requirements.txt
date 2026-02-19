@@ -1,8 +1,8 @@
-flask
+Flask
 scikit-learn
 pandas
 numpy
-opencv-python-headless
+qrcode[pil]
 pyzbar
 Pillow
-gunicorn
+opencv-python-headless

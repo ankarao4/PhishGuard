@@ -1,0 +1,5 @@
+{
+  "confidence": "66.0%",
+  "result": "Legitimate",
+  "url": "https://google.com"
+}

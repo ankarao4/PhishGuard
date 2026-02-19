@@ -1,132 +1,139 @@
-from flask import Flask, render_template, request, jsonify
-import cv2
+from flask import Flask, request, jsonify, render_template
+import joblib
 import numpy as np
-from model import detector
-import ctypes
 import os
-
-# MacOS specific fix for pyzbar not finding libzbar
-try:
-    libzbar_path = '/opt/homebrew/opt/zbar/lib/libzbar.dylib'
-    if os.path.exists(libzbar_path):
-        ctypes.CDLL(libzbar_path)
-except Exception as e:
-    print(f"Warning: Could not manually load libzbar: {e}")
-
+from utils import extract_features
+# Attempt to import pyzbar, handle potential import error gracefully
 try:
     from pyzbar.pyzbar import decode
-    PYZBAR_AVAILABLE = True
+    PYZBAR_Available = True
 except ImportError:
-    PYZBAR_AVAILABLE = False
-    print("Warning: pyzbar not available, falling back to OpenCV")
+    PYZBAR_Available = False
+    print("Warning: pyzbar not installed. QR code scanning might be limited.")
+
+# Attempt to import cv2 as fallback
+try:
+    import cv2
+    CV2_Available = True
+except ImportError:
+    CV2_Available = False
+    print("Warning: opencv-python-headless not installed. QR code fallback disabled.")
+
+from PIL import Image
+import io
 
 app = Flask(__name__)
 
+# Load model
+MODEL_PATH = 'models/phishing_model.pkl'
+model = None
+
+def load_model():
+    global model
+    if os.path.exists(MODEL_PATH):
+        try:
+            model = joblib.load(MODEL_PATH)
+            print("Model loaded successfully.")
+        except Exception as e:
+            print(f"Error loading model: {e}")
+    else:
+        print(f"Model file not found at {MODEL_PATH}. Prediction service unavailable.")
+
+load_model()
+
 @app.route('/')
-def index():
+def home():
     return render_template('index.html')
 
-@app.route('/predict-url', methods=['POST'])
-def predict_url():
+@app.route('/api/predict', methods=['POST'])
+def predict():
+    if not model:
+        # Try loading again just in case
+        load_model()
+        if not model:
+            return jsonify({'error': 'Model not loaded. Please train the model first.'}), 503
+    
     data = request.json
-    url = data.get('url', '')
-    if not url:
+    if not data or 'url' not in data:
         return jsonify({'error': 'No URL provided'}), 400
     
-    result = detector.predict(url)
-    return jsonify(result)
+    url = data['url']
+    try:
+        features = np.array([extract_features(url)])
+        prediction = model.predict(features)[0]
+        # prediction 0 = Legitimate, 1 = Phishing
+        result = "Phishing" if prediction == 1 else "Legitimate"
+        
+        # Get probability (confidence)
+        proba = model.predict_proba(features)[0]
+        confidence = proba[prediction] * 100
+        
+        return jsonify({
+            'result': result,
+            'confidence': f"{confidence:.1f}%",
+            'url': url
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/analyze-qr', methods=['POST'])
-def analyze_qr():
+@app.route('/api/scan_qr', methods=['POST'])
+def scan_qr():
+    if not PYZBAR_Available and not CV2_Available:
+        return jsonify({'error': 'QR Code scanning libraries (pyzbar/opencv) not available on server.'}), 501
+        
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     
     file = request.files['file']
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-    
-    # Process image
+        
     try:
-        # Read file into numpy array
-        file.seek(0)
-        file_bytes = np.frombuffer(file.read(), np.uint8)
-        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        # Read image
+        img = Image.open(file.stream)
+        url = None
         
-        if img is None:
-            return jsonify({'error': 'Could not decode image'}), 400
-
-        extracted_urls = set()
+        # Try pyzbar first
+        if PYZBAR_Available:
+            decoded_objects = decode(img)
+            if decoded_objects:
+                url = decoded_objects[0].data.decode('utf-8')
         
-        # Try pyzbar first (if available and arch matches)
-        if PYZBAR_AVAILABLE:
+        # Try cv2 if pyzbar failed or not available
+        if not url and CV2_Available:
             try:
-                decoded_objects = decode(img)
-                for obj in decoded_objects:
-                    text = obj.data.decode('utf-8')
-                    if text:
-                        extracted_urls.add(text)
-            except Exception:
-                pass
+                # Convert PIL image to cv2 format (numpy array)
+                img_np = np.array(img.convert('RGB'))
+                open_cv_image = img_np[:, :, ::-1].copy() # Convert RGB to BGR
+                detector = cv2.QRCodeDetector()
+                data, bbox, _ = detector.detectAndDecode(open_cv_image)
+                if data:
+                    url = data
+            except Exception as cv_e:
+                print(f"OpenCV decoding error: {cv_e}")
 
-        # Fallback to Robust OpenCV
-        if not extracted_urls:
-            detector_cv = cv2.QRCodeDetector()
+        if not url:
+            return jsonify({'error': 'No QR code found in image'}), 400
             
-            def detect_on_img(image):
-                # Try Multi
-                retval, decoded_info, points, _ = detector_cv.detectAndDecodeMulti(image)
-                if retval:
-                    for info in decoded_info:
-                        if info: extracted_urls.add(info)
-                # Try Single
-                data, _, _ = detector_cv.detectAndDecode(image)
-                if data: extracted_urls.add(data)
-
-            # 1. Original
-            detect_on_img(img)
-
-            # 2. Grayscale
-            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            detect_on_img(gray)
+        # Predict URL if model is available
+        result = "Unknown (Model not loaded)"
+        confidence = "N/A"
+        
+        if model:
+            features = np.array([extract_features(url)])
+            prediction = model.predict(features)[0]
+            result = "Phishing" if prediction == 1 else "Legitimate"
+            proba = model.predict_proba(features)[0]
+            confidence = f"{proba[prediction] * 100:.1f}%"
             
-            # 3. Enhanced Contrast (CLAHE) - Excellent for lighting issues
-            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-            enhanced = clahe.apply(gray)
-            detect_on_img(enhanced)
-            
-            # 4. Binary Threshold checks
-            _, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY)
-            detect_on_img(binary)
-            
-            # 5. Adaptive Threshold
-            adaptive = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2)
-            detect_on_img(adaptive)
-            
-            # 6. Sharpening
-            kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-            sharpened = cv2.filter2D(gray, -1, kernel)
-            detect_on_img(sharpened)
-            
-            # 7. Inverted (Negative)
-            inverted = cv2.bitwise_not(gray)
-            detect_on_img(inverted)
-
-        extracted_data = []
-        for url in extracted_urls:
-            analysis = detector.predict(url)
-            extracted_data.append({
-                'content': url,
-                'analysis': analysis
-            })
-            
-        if not extracted_data:
-            return jsonify({'error': 'No QR code detected. Try cropping the QR code closer or improving lighting.'}), 400
-            
-        return jsonify({'results': extracted_data})
+        return jsonify({
+            'url': url,
+            'result': result,
+            'confidence': confidence
+        })
         
     except Exception as e:
-        print(f"Error processing QR: {e}")
-        return jsonify({'error': 'Server error processing image'}), 500
+        return jsonify({'error': f"Error processing QR code: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, port=3000)
+    app.run(host='0.0.0.0', debug=True, port=5001)
